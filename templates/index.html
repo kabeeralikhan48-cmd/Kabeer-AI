@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kabeer AI</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #10131b;
+  color: white;
+}
+header {
+  text-align: center;
+  padding: 20px;
+  background: #202638;
+}
+#chat {
+  max-width: 700px;
+  height: 65vh;
+  overflow-y: auto;
+  margin: auto;
+  padding: 15px;
+}
+.msg {
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.user { background: #34446b; }
+.ai { background: #252b39; }
+form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  max-width: 700px;
+  margin: auto;
+}
+input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px;
+  border-radius: 9px;
+}
+button {
+  padding: 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #7798ff;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+<header>
+  <h2>🤖 Kabeer AI</h2>
+  <p>Your Personal AI Assistant</p>
+</header>
+
+<div id="chat">
+  <div class="msg ai">
+    Assalam-o-Alaikum! Main Kabeer AI hoon.
+    Mujh se Roman Urdu ya English mein baat karo.
+  </div>
+</div>
+
+<form id="form">
+  <input id="message" placeholder="Apna message likho..."
+  maxlength="5000" required>
+  <button id="send" type="submit">Send</button>
+</form>
+
+<script>
+const form = document.getElementById("form");
+const input = document.getElementById("message");
+const chat = document.getElementById("chat");
+const send = document.getElementById("send");
+const history = [];
+
+function addMessage(text, type) {
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = input.value.trim();
+  if (!message || send.disabled) return;
+
+  addMessage(message, "user");
+  input.value = "";
+  send.disabled = true;
+  const waiting = addMessage("Soch raha hoon...", "ai");
+
+  try {
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({message, history})
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error");
+
+    waiting.textContent = data.reply;
+    history.push(
+      {role: "user", content: message},
+      {role: "assistant", content: data.reply}
+    );
+    if (history.length > 20) history.splice(0, 2);
+  } catch (error) {
+    waiting.textContent = "Masla: " + error.message;
+  } finally {
+    send.disabled = false;
+    input.focus();
+  }
+});
+</script>
+</body>
+</html>
