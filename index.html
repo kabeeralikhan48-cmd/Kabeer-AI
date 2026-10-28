@@ -1,59 +1,423 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kabeer Video</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0b12">
+<title>Vibzo - Watch & Share</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body{margin:0;background:#000;color:#fff;font-family:Arial}
-header{padding:15px;text-align:center;background:#111;font-size:22px;font-weight:bold}
-nav{display:flex;justify-content:center;gap:10px;padding:10px;background:#181818}
-button{padding:10px 15px;border:none;border-radius:20px;background:#ff004f;color:white}
-.video{padding:15px}
-iframe,video{width:100%;height:420px;border:none;border-radius:12px}
-input{width:100%;padding:10px;border-radius:10px;border:none;margin:10px 0}
+*{box-sizing:border-box}
+body{margin:0;background:#0b0b12;color:#fff;font-family:Arial,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:15px;background:#12121d;position:sticky;top:0;z-index:5;border-bottom:1px solid #29293a}
+.logo{font-size:28px;font-weight:900;color:#c46bff}
+nav{display:flex;gap:7px;padding:12px;overflow-x:auto;background:#12121d}
+button{border:0;border-radius:10px;padding:11px 14px;font-weight:bold;cursor:pointer}
+nav button,.secondary{background:#29293b;color:white;white-space:nowrap}
+nav button.active,.primary{background:#b64cff;color:white}
+main{max-width:850px;margin:auto;padding:16px}
+.panel,.video-card{background:#161622;border:1px solid #2b2b3e;border-radius:15px;margin-bottom:18px;overflow:hidden}
+.panel{padding:17px}
+input,textarea,select{width:100%;padding:13px;margin:8px 0 14px;background:#0b0b12;color:white;border:1px solid #414156;border-radius:9px}
+textarea{resize:vertical}
+.video-card video,.video-card iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.video-info{padding:15px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.muted{color:#aaaabd;font-size:13px;line-height:1.5}
+.notice{color:#dfbaff;line-height:1.5;font-size:14px}
+.comment{padding:9px 0;border-bottom:1px solid #303044;overflow-wrap:anywhere}
+.hidden{display:none!important}
+footer{text-align:center;padding:25px;color:#999}
 </style>
 </head>
-<body>
 
-<header>Kabeer Video</header>
+<body>
+<header>
+  <div class="logo">✦ Vibzo</div>
+  <button class="primary" onclick="showPage('account')">Account</button>
+</header>
 
 <nav>
-<button onclick="show('short')">Shorts</button>
-<button onclick="show('long')">Long Videos</button>
-<button onclick="show('upload')">Upload</button>
+  <button class="active" data-page="home" onclick="showPage('home')">Home</button>
+  <button data-page="shorts" onclick="showPage('shorts')">Shorts</button>
+  <button data-page="long" onclick="showPage('long')">Long Videos</button>
+  <button data-page="upload" onclick="showPage('upload')">＋ Add Video</button>
+  <button data-page="account" onclick="showPage('account')">Login / Signup</button>
 </nav>
 
-<div id="short" class="video">
-<h2>Short Videos</h2>
-<iframe src="https://www.youtube.com/embed/aqz-KE-bpKQ"></iframe>
-</div>
+<main>
+  <section id="home" class="page">
+    <div class="panel">
+      <h2>Welcome to Vibzo!</h2>
+      <p>Watch videos. Share your world.</p>
+      <button class="primary" onclick="showPage('upload')">＋ Add a Video</button>
+    </div>
+    <div id="homeFeed"></div>
+  </section>
 
-<div id="long" class="video" style="display:none">
-<h2>Long Videos</h2>
-<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
-</div>
+  <section id="shorts" class="page hidden">
+    <h2>Shorts</h2>
+    <div id="shortFeed"></div>
+  </section>
 
-<div id="upload" class="video" style="display:none">
-<h2>Apni Video Dekho</h2>
-<input type="file" accept="video/*" onchange="loadVideo(event)">
-<video id="player" controls></video>
-</div>
+  <section id="long" class="page hidden">
+    <h2>Long Videos</h2>
+    <div id="longFeed"></div>
+  </section>
+
+  <section id="upload" class="page hidden">
+    <div class="panel">
+      <h2>Add a Video</h2>
+      <label for="videoTitle">Video title</label>
+      <input id="videoTitle" placeholder="Enter video title">
+
+      <label for="videoType">Category</label>
+      <select id="videoType">
+        <option value="shorts">Short Video / Shorts</option>
+        <option value="long">Long Video</option>
+      </select>
+
+      <label for="youtubeUrl">YouTube link (optional)</label>
+      <input id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+      <button class="primary" onclick="addYoutube()">Publish YouTube Link</button>
+
+      <hr style="border-color:#303044;margin:22px 0">
+
+      <label for="videoFile">Or choose a video from your phone</label>
+      <input id="videoFile" type="file" accept="video/*">
+      <video id="preview" class="hidden" controls style="width:100%;margin:12px 0"></video>
+      <button class="secondary" onclick="previewVideo()">Preview Video</button>
+      <button class="primary" onclick="publishLocalVideo()">Add Preview to Feed</button>
+
+      <p class="notice">Local videos are only previewed in this browser. They are not uploaded online yet.</p>
+    </div>
+  </section>
+
+  <section id="account" class="page hidden">
+    <div class="panel">
+      <h2>Your Account</h2>
+      <p id="authStatus" class="notice">Checking connection...</p>
+      <div id="authForms">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="Email address" autocomplete="email">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="At least 6 characters" autocomplete="current-password">
+        <div class="actions">
+          <button class="primary" onclick="signUp()">Create Account</button>
+          <button class="secondary" onclick="signIn()">Login</button>
+        </div>
+      </div>
+      <button id="logoutBtn" class="secondary hidden" onclick="signOut()">Logout</button>
+      <p class="muted">If confirmation is required, check your email after signup.</p>
+    </div>
+  </section>
+</main>
+
+<footer>Vibzo © 2026 · Watch. Share. Enjoy.</footer>
 
 <script>
-function show(id){
-['short','long','upload'].forEach(x=>{
-document.getElementById(x).style.display="none";
-});
-document.getElementById(id).style.display="block";
-}
-function loadVideo(e){
-let file=e.target.files[0];
-if(file){
-document.getElementById('player').src=URL.createObjectURL(file);
-}
-}
-</script>
+const SUPABASE_URL = "https://nbqilexomlywylhjqzra.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_NzWRd1Qxd13ICM1DKUW_IA_jwpoViuZ";
 
+let db = null;
+let currentUser = null;
+let previewURL = null;
+let localPosts = [];
+
+try {
+  if (window.supabase) {
+    db = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+  }
+} catch (error) {
+  console.error(error);
+}
+
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(el =>
+    el.classList.toggle("hidden", el.id !== page)
+  );
+  document.querySelectorAll("nav button").forEach(el =>
+    el.classList.toggle("active", el.dataset.page === page)
+  );
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function getPosts() {
+  try {
+    return JSON.parse(localStorage.getItem("vibzo_posts") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function savePosts(posts) {
+  localStorage.setItem("vibzo_posts", JSON.stringify(posts));
+}
+
+function youtubeId(value) {
+  try {
+    const url = new URL(value);
+    if (url.hostname === "youtu.be")
+      return url.pathname.slice(1).split("/")[0];
+
+    if (["youtube.com","www.youtube.com","m.youtube.com"].includes(url.hostname)) {
+      if (url.pathname === "/watch") return url.searchParams.get("v");
+      const match = url.pathname.match(/^\/(embed|shorts)\/([^/]+)/);
+      if (match) return match[2];
+    }
+  } catch {}
+  return null;
+}
+
+function addYoutube() {
+  const title = document.getElementById("videoTitle").value.trim();
+  const url = document.getElementById("youtubeUrl").value.trim();
+  const type = document.getElementById("videoType").value;
+  const id = youtubeId(url);
+
+  if (!title) return alert("Enter a video title.");
+  if (!id) return alert("Enter a valid YouTube link.");
+
+  const posts = getPosts();
+  posts.unshift({
+    id: Date.now(),
+    title,
+    type,
+    youtubeId: id,
+    likes: 0,
+    comments: []
+  });
+  savePosts(posts);
+  document.getElementById("videoTitle").value = "";
+  document.getElementById("youtubeUrl").value = "";
+  renderFeeds();
+  showPage(type === "shorts" ? "shorts" : "long");
+  alert("Video link added to this browser's feed!");
+}
+
+function previewVideo() {
+  const file = document.getElementById("videoFile").files[0];
+  if (!file) return alert("Choose a video first.");
+  if (previewURL) URL.revokeObjectURL(previewURL);
+  previewURL = URL.createObjectURL(file);
+  const preview = document.getElementById("preview");
+  preview.src = previewURL;
+  preview.classList.remove("hidden");
+}
+
+function publishLocalVideo() {
+  const file = document.getElementById("videoFile").files[0];
+  const title = document.getElementById("videoTitle").value.trim();
+  const type = document.getElementById("videoType").value;
+
+  if (!file) return alert("Choose a video first.");
+  if (!title) return alert("Enter a video title.");
+  if (!previewURL) previewVideo();
+
+  if (!previewURL) return;
+
+  localPosts.unshift({
+    id: Date.now(),
+    title,
+    type,
+    localURL: previewURL,
+    likes: 0,
+    comments: []
+  });
+
+  renderFeeds();
+  showPage(type);
+  alert("Preview added. It is not uploaded online and may disappear after refreshing.");
+}
+
+function renderFeed(containerId, posts) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+
+  if (!posts.length) {
+    container.innerHTML = '<div class="panel muted">No videos yet. Add a YouTube link to get started!</div>';
+    return;
+  }
+
+  posts.forEach(post => {
+    const card = document.createElement("article");
+    card.className = "video-card";
+
+    if (post.youtubeId) {
+      const iframe = document.createElement("iframe");
+      iframe.src = "https://www.youtube-nocookie.com/embed/" +
+        encodeURIComponent(post.youtubeId);
+      iframe.title = post.title;
+      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+      iframe.allowFullscreen = true;
+      card.appendChild(iframe);
+    } else if (post.localURL) {
+      const video = document.createElement("video");
+      video.src = post.localURL;
+      video.controls = true;
+      card.appendChild(video);
+    }
+
+    const info = document.createElement("div");
+    info.className = "video-info";
+
+    const heading = document.createElement("h3");
+    heading.textContent = post.title;
+
+    const caption = document.createElement("p");
+    caption.className = "muted";
+    caption.textContent = post.type === "shorts" ? "Vibzo Short" : "Vibzo Video";
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+
+    const like = document.createElement("button");
+    like.className = "secondary";
+    like.textContent = "♥ Like (" + (post.likes || 0) + ")";
+    like.onclick = () => changeLikes(post.id);
+
+    const commentInput = document.createElement("input");
+    commentInput.placeholder = "Write a comment...";
+    commentInput.setAttribute("aria-label", "Write a comment");
+
+    const commentButton = document.createElement("button");
+    commentButton.className = "primary";
+    commentButton.textContent = "Comment";
+    commentButton.onclick = () => addComment(post.id, commentInput.value);
+
+    actions.append(like, commentInput, commentButton);
+
+    const comments = document.createElement("div");
+    comments.className = "comment-list";
+    (post.comments || []).forEach(comment => {
+      const item = document.createElement("div");
+      item.className = "comment";
+      item.textContent = comment;
+      comments.appendChild(item);
+    });
+
+    info.append(heading, caption, actions, comments);
+    card.appendChild(info);
+    container.appendChild(card);
+  });
+}
+
+function renderFeeds() {
+  const saved = getPosts();
+  const posts = [...localPosts, ...saved];
+
+  renderFeed("homeFeed", posts);
+  renderFeed("shortFeed", posts.filter(p => p.type === "shorts"));
+  renderFeed("longFeed", posts.filter(p => p.type === "long"));
+}
+
+function changeLikes(id) {
+  const local = localPosts.find(p => p.id === id);
+  if (local) {
+    local.likes = (local.likes || 0) + 1;
+  } else {
+    const posts = getPosts();
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    post.likes = (post.likes || 0) + 1;
+    savePosts(posts);
+  }
+  renderFeeds();
+}
+
+function addComment(id, value) {
+  const comment = value.trim();
+  if (!comment) return alert("Write a comment first.");
+
+  const local = localPosts.find(p => p.id === id);
+  if (local) {
+    local.comments.push(comment);
+  } else {
+    const posts = getPosts();
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    post.comments = post.comments || [];
+    post.comments.push(comment);
+    savePosts(posts);
+  }
+  renderFeeds();
+}
+
+async function refreshAccount() {
+  if (!db) {
+    document.getElementById("authStatus").textContent =
+      "Supabase connection could not start. Check the project URL and key.";
+    return;
+  }
+
+  const {data, error} = await db.auth.getSession();
+  if (error) console.error(error);
+  currentUser = data?.session?.user || null;
+  updateAccountUI();
+}
+
+function updateAccountUI() {
+  document.getElementById("authStatus").textContent = currentUser
+    ? "Logged in as " + currentUser.email
+    : "Not logged in. Create an account or login.";
+
+  document.getElementById("authForms").classList.toggle("hidden", !!currentUser);
+  document.getElementById("logoutBtn").classList.toggle("hidden", !currentUser);
+}
+
+async function signUp() {
+  if (!db) return alert("Supabase connection is not ready.");
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || password.length < 6)
+    return alert("Enter an email and a password of at least 6 characters.");
+
+  const {data, error} = await db.auth.signUp({email, password});
+  if (error) return alert(error.message);
+
+  currentUser = data.user && data.session ? data.user : null;
+  updateAccountUI();
+  alert(data.session
+    ? "Account created successfully!"
+    : "Signup received. Check your email to confirm your account.");
+}
+
+async function signIn() {
+  if (!db) return alert("Supabase connection is not ready.");
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || !password) return alert("Enter your email and password.");
+
+  const {data, error} = await db.auth.signInWithPassword({email, password});
+  if (error) return alert(error.message);
+  currentUser = data.user;
+  updateAccountUI();
+  alert("Login successful!");
+}
+
+async function signOut() {
+  if (!db) return;
+  const {error} = await db.auth.signOut();
+  if (error) return alert(error.message);
+  currentUser = null;
+  updateAccountUI();
+  alert("Logged out.");
+}
+
+if (db) {
+  db.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+    updateAccountUI();
+  });
+}
+
+renderFeeds();
+refreshAccount();
+</script>
 </body>
 </html>
