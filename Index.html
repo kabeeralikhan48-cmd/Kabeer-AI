@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kabeer Video</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:Arial}
+header{padding:15px;text-align:center;background:#111;font-size:22px;font-weight:bold}
+nav{display:flex;justify-content:center;gap:10px;padding:10px;background:#181818}
+button{padding:10px 15px;border:none;border-radius:20px;background:#ff004f;color:white}
+.video{padding:15px}
+iframe,video{width:100%;height:420px;border:none;border-radius:12px}
+input{width:100%;padding:10px;border-radius:10px;border:none;margin:10px 0}
+</style>
+</head>
+<body>
+
+<header>Kabeer Video</header>
+
+<nav>
+<button onclick="show('short')">Shorts</button>
+<button onclick="show('long')">Long Videos</button>
+<button onclick="show('upload')">Upload</button>
+</nav>
+
+<div id="short" class="video">
+<h2>Short Videos</h2>
+<iframe src="https://www.youtube.com/embed/aqz-KE-bpKQ"></iframe>
+</div>
+
+<div id="long" class="video" style="display:none">
+<h2>Long Videos</h2>
+<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
+</div>
+
+<div id="upload" class="video" style="display:none">
+<h2>Apni Video Dekho</h2>
+<input type="file" accept="video/*" onchange="loadVideo(event)">
+<video id="player" controls></video>
+</div>
+
+<script>
+function show(id){
+['short','long','upload'].forEach(x=>{
+document.getElementById(x).style.display="none";
+});
+document.getElementById(id).style.display="block";
+}
+function loadVideo(e){
+let file=e.target.files[0];
+if(file){
+document.getElementById('player').src=URL.createObjectURL(file);
+}
+}
+</script>
+
+</body>
+</html>
